@@ -1,0 +1,27 @@
+{
+  "name": "wootils-app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "devMode": "cp ../.env.sample ./.env",
+    "prodMode": "cp ../.env.prod ./.env",
+    "dev": "npm run devMode; node server.js",
+    "prod": "npm run prodMode; node server.js",
+    "start": "npm run dev",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/isramos/wootil.git"
+  },
+  "author": "Igor S. Ramos",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/isramos/wootil/issues"
+  },
+  "homepage": "https://github.com/isramos/wootil",
+  "dependencies": {
+    "dotenv": "^8.2.0"
+  }
+}
