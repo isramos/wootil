@@ -1,5 +1,8 @@
 
+# ignore temp files
+_tmp*
 
 # Ignore .env files, except the sample one
 .env.*
 !.env.sample
+
