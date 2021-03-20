@@ -1,2 +1,5 @@
-.env.prod
-app/.env
+
+
+# Ignore .env files, except the sample one
+.env.*
+!.env.sample

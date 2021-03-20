@@ -4,10 +4,8 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "devMode": "cp ../.env.sample ./.env",
-    "prodMode": "cp ../.env.prod ./.env",
-    "dev": "npm run devMode; node server.js",
-    "prod": "npm run prodMode; node server.js",
+    "dev":  "node -r dotenv/config server.js dotenv_config_path=../.env.sample",
+    "prod": "node -r dotenv/config server.js dotenv_config_path=../.env.prod",
     "start": "npm run dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
