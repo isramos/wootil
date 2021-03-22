@@ -3,11 +3,12 @@ const fs = require('fs')
 
 const DEBUG = false;
 
+const CACHE_AGE = 5 * 60 // 5 min cache
+
 if(process.env.WORDPRESS_API_BASE === undefined){
     console.log('Error: Could not log dotenv config file')
     process.exit(1)
 }
-console.log('Hello world! WORDPRESS_API_BASE: ', process.env.WORDPRESS_API_BASE)
 
 const { WORDPRESS_API_BASE, CONSUMER_KEY, CONSUMER_SECRET } = process.env;
 var BasicAuth = 'Basic ' + Buffer.from(CONSUMER_KEY + ':' + CONSUMER_SECRET).toString('base64');
@@ -60,12 +61,12 @@ app.get('/api/order/:inputOrderNumber/:inputEmail/:inputPostalCode', async (req,
          `
         }
     }
-
     res.status(200).send(responseString)
 })
 
 app.listen(port, () => {
   console.log(`Wootils app listening at http://localhost:${port}`)
+  console.log('WORDPRESS_API_BASE: ', process.env.WORDPRESS_API_BASE)
 })
 
 async function getOrder( inputEmail, inputOrderNumber, inputPostalCode){
@@ -73,9 +74,19 @@ async function getOrder( inputEmail, inputOrderNumber, inputPostalCode){
     let getOrderResponse = null
     try{
         try{
-            getOrderResponse = JSON.parse( fs.readFileSync(`./${cacheFileName}`, 'utf-8') )
-            console.log('File already in cache')
-            return getOrderResponse;
+             //TODO: make fs operations async
+            const json = JSON.parse( fs.readFileSync(`./${cacheFileName}`, 'utf-8') )
+            getOrderResponse = json.data
+            const timestamp = json.timestamp
+            const cacheAge = (Date.now() - timestamp) /1000
+            if(cacheAge > CACHE_AGE){
+                console.log('Found in cache, but cache is stale:', cacheAge)
+            }  else {
+                console.log('File already in cache, age:', cacheAge)
+                // TODO: add 5s of sleep time so user is not confused with fast query time compared to fresh query
+                return getOrderResponse;
+            }
+            
         } catch(err){
             console.log('File NOT in cache')
         }
@@ -86,17 +97,16 @@ async function getOrder( inputEmail, inputOrderNumber, inputPostalCode){
         console.log('Response: ', res.status)
         getOrderResponse = await res.json()
     
-        const { first_name, last_name, email, postcode } = getOrderResponse.billing || {}
+        const { email, postcode } = getOrderResponse.billing || {}
     
         if(email === inputEmail && inputPostalCode === postcode){
-            console.log('Success, order FOUND. Saved to file.')
-            fs.writeFileSync(`./${cacheFileName}`, JSON.stringify(getOrderResponse, null,2), 'utf-8')
+            //TODO: make fs operations async
+            fs.writeFileSync(`./${cacheFileName}`, JSON.stringify({data:getOrderResponse, timestamp:Date.now()}, null,2), 'utf-8')
         } else {
-            console.log('Error, order NOT found')
             return { status: 404}
         }
     } catch(err){
-        console.log('oops, error processing your request. This is a bug.', err )
+        console.log(`Error processing request (file: ${cacheFileName}). Stack: `, err )
         return getOrderResponse
     }
     return getOrderResponse
