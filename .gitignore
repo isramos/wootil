@@ -3,6 +3,6 @@
 _tmp*
 
 # Ignore .env files, except the sample one
-.env.*
+.env*
 !.env.sample
 
