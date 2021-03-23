@@ -1,16 +1,18 @@
 const fetch = require('node-fetch')
 const fs = require('fs')
+const dotenv = require('dotenv');
+dotenv.config(); // load .env file
 
 const DEBUG = false;
-
 const CACHE_AGE = 5 * 60 // 5 min cache
 
-if(process.env.WORDPRESS_API_BASE === undefined){
-    console.log('Error: Could not log dotenv config file')
+const { WORDPRESS_API_BASE, CONSUMER_KEY, CONSUMER_SECRET } = process.env;
+
+if(WORDPRESS_API_BASE === undefined || CONSUMER_KEY === undefined || CONSUMER_SECRET  === undefined){
+    console.log('Error: required environmental variables are not properly configured. Check \'.env\'.' )
     process.exit(1)
 }
 
-const { WORDPRESS_API_BASE, CONSUMER_KEY, CONSUMER_SECRET } = process.env;
 var BasicAuth = 'Basic ' + Buffer.from(CONSUMER_KEY + ':' + CONSUMER_SECRET).toString('base64');
 
 const express = require('express')
