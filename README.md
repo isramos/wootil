@@ -12,10 +12,12 @@ Customers can retrieve their USPS tracking number using their Order #, email (bi
 
 ### Local development:
 1. Enable the Woocommerce REST API [here](https://docs.woocommerce.com/document/woocommerce-rest-api/). [API docs](https://woocommerce.github.io/woocommerce-rest-api-docs)
-2. Copy .env.sample to .env.dev and .env.prod, and add your info. Base url, and API key.
+2. Copy `.env.sample` to `.env` and `.env.dev`, and add your own info, such as base url for your Wordpress and Woocommerce API key.
 3. Build the app: $ `npm install`
    1. Install nodemon globally: `npm -g nodemon`
 4. Run the app: $ `npm run dev`
+5. Point your browser to http://localhost:3000/
 ### Production Release:
 Similar to dev above, but
-1. Run the app with $`npm run prod`
+1. Run the app with $`npm run start`
+2. 
