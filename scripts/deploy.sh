@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ### NOTE: this deployment script is for DREAMHOST [insert plan name here] ####
-# TODO: Link to blog article showing Dreamhost running a Node.js server
+# see './dreamhost.md' for some pointers on that setup
 
 #### REQUIRED ENV VARS IN .env.server
 # APP_DIR="/home/USER/APPNAME.DOMAIN.COM"
