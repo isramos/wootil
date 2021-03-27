@@ -4,9 +4,9 @@
   "description": "",
   "main": "app.js",
   "scripts": {
-    "dev": "nodemon -r dotenv/config server.js dotenv_config_path=../.env.dev",
+    "dev": "nodemon -r dotenv/config server.js dotenv_config_path=.env.dev",
     "start": "node server.js",
-    "test": "node -r dotenv/config test/server.test.js dotenv_config_path=../.env.dev"
+    "test": "node -r dotenv/config test/server.test.js dotenv_config_path=.env.dev"
   },
   "repository": {
     "type": "git",
