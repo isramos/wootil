@@ -85,35 +85,106 @@
     <div style="display:none;" id="loader"></div>
 
     <div style="display:block;" id="myDiv" class="animate-bottom">
-        <h2>Order Shipping Status</h2>
-        <p>Check shipping status.</p>
+        <h2>Order Status Page</h2>
 
-        <div id="dataInput">
-            <form onsubmit="return formSubmit(event)">
-                <label for="email">Email:</label><br>
-                <input type="text" id="inputEmail" name="email" placeholder="user@example.com"><br>
-                <label for="order">Order Number:</label><br>
-                <input type="text" id="inputOrder" name="order" placeholder="1234"><br><br>
-                <label for="postal">Billing Postal code:</label><br>
-                <input type="text" id="inputPostal" name="postal" placeholder="90210"><br><br>
-                <input type="submit" value="Submit">
-            </form>
+        <div id="login">
+            <p>Enter the information below to retrieve your order.</p>
+            <div id="dataInput">
+                <form onsubmit="return formSubmit(event)">
+                    <label for="email">Email:</label><br>
+                    <input type="text" id="inputEmail" name="email" placeholder="user@example.com"><br>
+                    <label for="order">Order Number:</label><br>
+                    <input type="text" id="inputOrder" name="order" placeholder="1234"><br><br>
+                    <label for="postal">Billing Postal code:</label><br>
+                    <input type="text" id="inputPostal" name="postal" placeholder="90210"><br><br>
+                    <input type="submit" value="Submit">
+                </form>
+            </div>
+        </div>
+
+        <div id="logged">
+            <div id="session"></div>
+            <button onclick="formSubmit()" type="button">Get Status</button>
+            <button onclick="clearSession()" type="button">Logout</button>
         </div>
 
         <hr />
         <div id="content"></div>
+        <div id="delivery"></div>
+
         <hr />
     </div>
 
     <script>
-        const showWarning = (str) => `<span style="color:red;">${str}</span> ${clearContentBtn}` 
+        const showWarning = (str) => `<span style="color:red;">${str}</span> ${clearContentBtn}`
         const serverErrStr = `Error: server not available. Please try again later. If problem persists, contact Admin`
         const validaErrStr = `You entered an invalid order number, email address or postal code.`;
         const clearContentBtn = `<button onclick="clearError()" type="button">Clear</button>`
 
+        const userDiv = (e, o, z) => `<div>Email: ${e} | Order#: ${o} | Postal Code: ${z}</div>`
+
+        const renderLabel = (label) => `<div id=${label.tracking}>
+            ${label.service_name} - tracking: ${label.tracking}<br>
+            ${label.summary}
+            </div>`
+
+        // const trackingUrl = `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${tracking}`
+        // const trackingLink = `<a href="${trackingUrl}" target="_blank" rel="noopener noreferrer">${tracking}</a>`
+
+        // Retrieve
+        let loggedOut = localStorage.getItem("cacheOrder") === null
+        if (loggedOut) {
+            document.getElementById("login").style.display = "block";
+            document.getElementById("logged").style.display = "none";
+        } else {
+            loginSuccess();
+        }
+
         function loadingPage() {
             document.getElementById("loader").style.display = "block";
             document.getElementById("myDiv").style.display = "none";
+        }
+
+        function deliveryStatus() {
+            document.getElementById("delivery").innerHTML = '(feature not implemented)'
+        }
+
+        function loginSuccess(inputOrder, inputEmail, inputPostal) {
+            if (inputEmail) {
+                localStorage.setItem("cacheOrder", JSON.stringify({
+                    inputOrder,
+                    inputEmail,
+                    inputPostal
+                }));
+            } else {
+                const json = JSON.parse(localStorage.getItem("cacheOrder"))
+                inputOrder = json.inputOrder
+                inputEmail = json.inputEmail
+                inputPostal = json.inputPostal
+            }
+            document.getElementById("login").style.display = "none";
+            document.getElementById("logged").style.display = "block";
+            document.getElementById("session").innerHTML = userDiv(inputEmail, inputOrder, inputPostal);
+        }
+
+        function renderLabels(json) {
+            const e = document.getElementById("content")
+            e.innerHTML = `Order Status: ${json.status}`
+            json.labels.forEach(element => {
+                e.innerHTML += renderLabel(element)
+            });
+            // e.innerHTML += 
+            //     `<br><button onclick="deliveryStatus()" type="button">Delivery Status</button>`;
+
+        }
+
+        function clearSession() {
+            // logout action
+            localStorage.removeItem("cacheOrder");
+            document.getElementById("session").innerHTML = ''
+            document.getElementById("content").innerHTML = ''
+            document.getElementById("login").style.display = "block";
+            document.getElementById("logged").style.display = "none";
         }
 
         function showPage() {
@@ -121,32 +192,41 @@
             document.getElementById("myDiv").style.display = "block";
         }
 
-        function clearError(){
+        function clearError() {
             document.getElementById("content").innerHTML = '';
         }
 
         async function formSubmit(event) {
-            event.preventDefault() // prevents page from reloading.
+            event && event.preventDefault() // prevents page from reloading.
             loadingPage() // show loading spinner
 
-            const inputOrder = document.getElementById("inputOrder").value;
-            const inputEmail = document.getElementById("inputEmail").value;
-            const inputPostal = document.getElementById("inputPostal").value;
+            let inputOrder = document.getElementById("inputOrder").value;
+            let inputEmail = document.getElementById("inputEmail").value;
+            let inputPostal = document.getElementById("inputPostal").value;
+            if (localStorage.getItem("cacheOrder") !== null) {
+                const json = JSON.parse(localStorage.getItem("cacheOrder"))
+                inputOrder = json.inputOrder
+                inputEmail = json.inputEmail
+                inputPostal = json.inputPostal
+            }
 
             // simple validation logic for now
-            if(inputOrder === '' || inputEmail.length ===0 || inputEmail.indexOf('@') === -1 || inputPostal === ''){
+            if (inputOrder === '' || inputEmail.length === 0 || inputEmail.indexOf('@') === -1 || inputPostal ===
+                '') {
                 document.getElementById("content").innerHTML = showWarning(validaErrStr);
                 showPage();
                 return
             }
 
-            const apiEndpoint = `/api/order/${inputOrder}/${inputEmail}/${inputPostal}?format=text`
+            const apiEndpoint = `/api/order/${inputOrder}/${inputEmail}/${inputPostal}`
             console.log('Fetching API endpoint: ', apiEndpoint)
             try {
                 let x = await fetch(apiEndpoint);
-                let y = await x.text();
-                document.getElementById("content").innerHTML = y;
+                let y = await x.json();
+                loginSuccess(inputOrder, inputEmail, inputPostal);
+                renderLabels(y);
             } catch (err) {
+                console.log(err)
                 document.getElementById("content").innerHTML = showWarning(serverErrStr);
             }
             showPage()
