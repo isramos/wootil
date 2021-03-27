@@ -1,25 +1,38 @@
 const fetch = require('node-fetch')
 const fs = require('fs')
 const dotenv = require('dotenv');
-dotenv.config(); // load .env file
 
-const DEBUG = false;
-const CACHE_AGE = 5 * 60 // 5 min cache
+let DEBUG = false;
+let CACHE_AGE = 5 * 60  // 5 min cache
 
-const { WORDPRESS_API_BASE, CONSUMER_KEY, CONSUMER_SECRET } = process.env;
+const { WORDPRESS_API_BASE, CONSUMER_KEY, CONSUMER_SECRET, USPS_USERNAME, DEV_MODE } = process.env;
+
+if(WORDPRESS_API_BASE){
+    console.log('Development mode. Loaded Env Var from  \'.env.dev\' file' )
+} else {
+    console.log('Production mode. Loading Env Var from  \'.env\' file' )
+    dotenv.config(); // load .env file
+}
 
 if(WORDPRESS_API_BASE === undefined || CONSUMER_KEY === undefined || CONSUMER_SECRET  === undefined){
     console.log('Error: required environmental variables are not properly configured. Check \'.env\'.' )
     process.exit(1)
 }
 
-var BasicAuth = 'Basic ' + Buffer.from(CONSUMER_KEY + ':' + CONSUMER_SECRET).toString('base64');
+if(DEV_MODE==='true'){
+    DEBUG = true;
+    CACHE_AGE = 24 * 60 * 60  // 1 day  cache
+}
+
+const uspsUrl = (tracking) => `https://secure.shippingapis.com/ShippingAPI.dll?API=TrackV2&XML=<TrackRequest USERID="${USPS_USERNAME}"><TrackID ID="${tracking}"></TrackID></TrackRequest>`
+
+const BasicAuth = 'Basic ' + Buffer.from(CONSUMER_KEY + ':' + CONSUMER_SECRET).toString('base64');
 
 const express = require('express')
 const app = express()
 const port = 3000
 
-
+// Serve static files
 app.use(express.static('public'))
   
 app.get('/api', (req, res) => {
@@ -29,41 +42,33 @@ app.get('/api', (req, res) => {
 app.get('/api/order/:inputOrderNumber/:inputEmail/:inputPostalCode', async (req, res) => {
     const { inputOrderNumber, inputEmail, inputPostalCode} = req.params
     const getOrderResponse = await getOrder(inputEmail, inputOrderNumber, inputPostalCode)
-    let responseString = null
+    let orderResponse = {}
     if(!getOrderResponse.id){
-        responseString = `<br> <strong>Order not found.</strong><br>Order #: "${inputOrderNumber}", email: "${inputEmail}", Postal Code: "${inputPostalCode}" <br>${new Date()} `
+        res.status(404).send( {params: req.params })
     } else {
         const { status, meta_data } = getOrderResponse
-
-        const labels = meta_data && meta_data.filter( e => e.key === 'wc_connect_labels')
-        let trackingInfoStr = ''
-        labels.forEach( el => {
-            const {value = [] }= el
-                value.forEach( oneValue => {
-                    const { carrier_id, tracking, service_name, created } = oneValue
-                    const trackingUrl = `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${tracking}`
-                    const trackingLink = `<a href="${trackingUrl}" target="_blank" rel="noopener noreferrer">${tracking}</a>`
-                    const createdDateString = new Date(created).toDateString()
-                    trackingInfoStr += `Carrier:${carrier_id}, Tracking ${trackingLink}, Service: ${service_name}, created: ${createdDateString}`
-                })
-        })
-        responseString = `    
-        Order status: <strong>${status}</strong><br>
-        Results for email: "${inputEmail}" <br>
-        Order #: "${inputOrderNumber}",
-        Postal Code: "${inputPostalCode}". 
-        <br><br>
-          Number of shipping labels found: ${labels.length}<br>
-         ${trackingInfoStr}
-        `
+        orderResponse.status = status
         if(DEBUG){
-            responseString += `
-            <br>-------- DEBUG------ <br> 
-            <pre>${JSON.stringify(getOrderResponse, null, 2)}</pre>
-         `
+            orderResponse.debug = {...getOrderResponse}
         }
+
+        const wc_connect_labels = meta_data && meta_data.find( e => e.key === 'wc_connect_labels')
+        let labelsArray = []
+        const labelCount = wc_connect_labels && wc_connect_labels.value.length
+        for ( let i =0; i < labelCount; i++){
+            const oneLabel = wc_connect_labels.value[i]
+            const { carrier_id, tracking, service_name, created } = oneLabel
+                
+            const uspsResponse = await fetch(uspsUrl(tracking))
+            const uspsText = await uspsResponse.text();
+            // TODO: is there an USPS API that returns structured delivery status and date?
+            const summary = uspsText.split('<TrackSummary>').pop().split('</TrackSummary>')[0];
+            labelsArray.push({ carrier_id, tracking, service_name, created, usps, summary })
+        }
+
+        orderResponse.labels = labelsArray
     }
-    res.status(200).send(responseString)
+    res.status(200).json({...orderResponse, params:req.params })
 })
 
 app.listen(port, () => {
@@ -71,6 +76,7 @@ app.listen(port, () => {
   console.log('WORDPRESS_API_BASE: ', process.env.WORDPRESS_API_BASE)
 })
 
+// Utilitiy functions
 async function getOrder( inputEmail, inputOrderNumber, inputPostalCode){
     const cacheFileName = `_tmp_${inputOrderNumber}_${inputEmail}_${inputPostalCode}.json`
     let getOrderResponse = null
