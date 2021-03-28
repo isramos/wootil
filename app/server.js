@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 let DEBUG = false;
 let CACHE_AGE = 5 * 60  // 5 min cache
 
-const { WORDPRESS_API_BASE, CONSUMER_KEY, CONSUMER_SECRET, USPS_USERNAME, DEV_MODE } = process.env;
+const { WORDPRESS_API_BASE, CONSUMER_KEY, CONSUMER_SECRET, USPS_USERNAME, DEV_MODE, RETURN_WINDOW = 0 } = process.env;
 
 if(WORDPRESS_API_BASE){
     console.log('Development mode. Loaded Env Var from  \'.env.dev\' file' )
@@ -24,7 +24,8 @@ if(DEV_MODE==='true'){
     CACHE_AGE = 24 * 60 * 60  // 1 day  cache
 }
 
-const uspsUrl = (tracking) => `https://secure.shippingapis.com/ShippingAPI.dll?API=TrackV2&XML=<TrackRequest USERID="${USPS_USERNAME}"><TrackID ID="${tracking}"></TrackID></TrackRequest>`
+const uspsTrackFieldUrl = (tracking) => 
+`https://secure.shippingapis.com/ShippingAPI.dll?API=TrackV2&XML=<TrackFieldRequest USERID="${USPS_USERNAME}"><TrackID ID="${tracking}"/></TrackFieldRequest>`
 
 const BasicAuth = 'Basic ' + Buffer.from(CONSUMER_KEY + ':' + CONSUMER_SECRET).toString('base64');
 
@@ -46,8 +47,10 @@ app.get('/api/order/:inputOrderNumber/:inputEmail/:inputPostalCode', async (req,
     if(!getOrderResponse.id){
         res.status(404).send( {params: req.params })
     } else {
-        const { status, meta_data } = getOrderResponse
+        const { status, date_created, meta_data } = getOrderResponse
         orderResponse.status = status
+        orderResponse.date_created = new Date(date_created).toDateString()
+
         if(DEBUG){
             orderResponse.debug = {...getOrderResponse}
         }
@@ -58,12 +61,11 @@ app.get('/api/order/:inputOrderNumber/:inputEmail/:inputPostalCode', async (req,
         for ( let i =0; i < labelCount; i++){
             const oneLabel = wc_connect_labels.value[i]
             const { carrier_id, tracking, service_name, created } = oneLabel
-                
-            const uspsResponse = await fetch(uspsUrl(tracking))
+            const d = new Date(created).toDateString() 
+            const uspsResponse = await fetch(uspsTrackFieldUrl(tracking))
             const uspsText = await uspsResponse.text();
-            // TODO: is there an USPS API that returns structured delivery status and date?
-            const summary = uspsText.split('<TrackSummary>').pop().split('</TrackSummary>')[0];
-            labelsArray.push({ carrier_id, tracking, service_name, created, usps, summary })
+            const uspsParsed = parseUspsTrackingResponse(uspsText)
+            labelsArray.push({ carrier_id, tracking, service_name, created: d, uspsText, uspsParsed })
         }
 
         orderResponse.labels = labelsArray
@@ -77,6 +79,22 @@ app.listen(port, () => {
 })
 
 // Utilitiy functions
+function parseUspsTrackingResponse(uspsTrackingResponseXml){
+    const summary = uspsTrackingResponseXml.split('<TrackSummary>').pop().split('</TrackSummary>')[0];
+    const eventDate = summary.split('<EventDate>').pop().split('</EventDate>')[0];
+    const event = summary.split('<Event>').pop().split('</Event>')[0];
+    const isDelivered = event && event.indexOf('Delivered') > -1
+    const returnByDate = isDelivered && addDays(new Date(eventDate), RETURN_WINDOW).toDateString()
+    const isReturnable = isDelivered && new Date(returnByDate) - new Date() > 0
+    return { event, eventDate, isDelivered, returnByDate, isReturnable }
+}
+
+function addDays(date, days) {
+    var result = new Date(date);
+    result.setDate(result.getDate() + days);
+    return result;
+  }
+
 async function getOrder( inputEmail, inputOrderNumber, inputPostalCode){
     const cacheFileName = `_tmp_${inputOrderNumber}_${inputEmail}_${inputPostalCode}.json`
     let getOrderResponse = null
