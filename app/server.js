@@ -5,7 +5,7 @@ const dotenv = require('dotenv');
 let DEBUG = false;
 let CACHE_AGE = 5 * 60  // 5 min cache
 
-const { WORDPRESS_API_BASE, CONSUMER_KEY, CONSUMER_SECRET, USPS_USERNAME, DEV_MODE, RETURN_WINDOW = 0 } = process.env;
+const { WORDPRESS_API_BASE, CONSUMER_KEY, CONSUMER_SECRET, USPS_USERNAME, DEV_MODE, RETURN_WINDOW = 0, RETURN_LINK} = process.env;
 
 if(WORDPRESS_API_BASE){
     console.log('Development mode. Loaded Env Var from  \'.env.dev\' file' )
@@ -58,9 +58,14 @@ app.get('/api/order/:inputOrderNumber/:inputEmail/:inputPostalCode', async (req,
         const wc_connect_labels = meta_data && meta_data.find( e => e.key === 'wc_connect_labels')
         let labelsArray = []
         const labelCount = wc_connect_labels && wc_connect_labels.value.length
+       
         for ( let i =0; i < labelCount; i++){
             const oneLabel = wc_connect_labels.value[i]
-            const { carrier_id, tracking, service_name, created } = oneLabel
+            const { carrier_id, tracking, service_name, created, refund } = oneLabel
+            if(oneLabel.hasOwnProperty('refund')){
+                // skip labels that are being refunded.
+                continue;
+            }
             const d = new Date(created).toDateString() 
             const uspsResponse = await fetch(uspsTrackFieldUrl(tracking))
             const uspsText = await uspsResponse.text();
@@ -75,7 +80,8 @@ app.get('/api/order/:inputOrderNumber/:inputEmail/:inputPostalCode', async (req,
 
 app.listen(port, () => {
   console.log(`Wootils app listening at http://localhost:${port}`)
-  console.log('WORDPRESS_API_BASE: ', process.env.WORDPRESS_API_BASE)
+  console.log('WORDPRESS_API_BASE: ', WORDPRESS_API_BASE)
+  console.log('\tProduct return window:', RETURN_WINDOW)
 })
 
 // Utilitiy functions
@@ -84,9 +90,20 @@ function parseUspsTrackingResponse(uspsTrackingResponseXml){
     const eventDate = summary.split('<EventDate>').pop().split('</EventDate>')[0];
     const event = summary.split('<Event>').pop().split('</Event>')[0];
     const isDelivered = event && event.indexOf('Delivered') > -1
-    const returnByDate = isDelivered && addDays(new Date(eventDate), RETURN_WINDOW).toDateString()
-    const isReturnable = isDelivered && new Date(returnByDate) - new Date() > 0
-    return { event, eventDate, isDelivered, returnByDate, isReturnable }
+
+    let returnByDate = null
+    let isReturnable = RETURN_WINDOW > 0
+    let openRetunWindow = false
+    let returnForm = null
+    if(isReturnable){
+        returnByDate = isDelivered && addDays(new Date(eventDate), parseInt(RETURN_WINDOW)).toDateString()
+        openRetunWindow = isDelivered && new Date(returnByDate) - new Date() > 0
+        if(openRetunWindow){
+            returnForm = RETURN_LINK   
+        }
+    }
+
+    return { event, eventDate, isDelivered, returnByDate, isReturnable, openRetunWindow, returnForm }
 }
 
 function addDays(date, days) {

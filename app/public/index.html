@@ -77,6 +77,29 @@
             display: none;
             text-align: center;
         }
+
+        #content {
+            margin-top: 50px;
+            margin-left: 50px;
+            display: block;
+            text-align: left;
+        }
+        #returnInfo{
+            width: 300px;
+            border: 15px solid green;
+            padding: 50px;
+            margin: 20px;
+            display: none;
+        }
+
+        .mybtn{
+            text-decoration: none;
+            text-decoration: none;
+        }
+        .mybtn:visited {
+            color: black;
+        }
+
     </style>
 </head>
 
@@ -108,28 +131,53 @@
             <button onclick="clearSession()" type="button">Logout</button>
         </div>
 
-        <hr />
         <div id="content"></div>
-        <div id="delivery"></div>
 
-        <hr />
     </div>
 
     <script>
+        var productReturlUrl = null 
         const showWarning = (str) => `<span style="color:red;">${str}</span> ${clearContentBtn}`
         const serverErrStr = `Error: server not available. Please try again later. If problem persists, contact Admin`
         const validaErrStr = `You entered an invalid order number, email address or postal code.`;
         const clearContentBtn = `<button onclick="clearError()" type="button">Clear</button>`
 
         const userDiv = (e, o, z) => `<div>Email: ${e} | Order#: ${o} | Postal Code: ${z}</div>`
+        const trackingUrl = (tracking) => `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${tracking}`
+        const trackingLink = (tracking) => {
+           return  `<a href="${trackingUrl(tracking)}" target="_blank" rel="noopener noreferrer">${tracking}</a>`
+        }
+
+        const returnableDiv = ({openRetunWindow, isReturnable, returnByDate }) => {
+            if(isReturnable && openRetunWindow){
+                return `
+                <div><button onclick="showReturn()" type="button">Return item</button></div> 
+                <div><small>Return eligible through ${returnByDate}.</small></div>
+                <div id="returnInfo"></div>
+                `
+            } else if(isReturnable && !openRetunWindow){
+                return `
+                <div><small>Return window closed on ${returnByDate}.</small></div>
+                `
+            } else {
+                return `<div><small>Product not eligible for returns.</small></div>`
+            }
+        }
 
         const renderLabel = (label) => `<div id=${label.tracking}>
-            ${label.service_name} - tracking: ${label.tracking}<br>
-            ${label.summary}
-            </div>`
+            ORDER SHIPPED: ${label.created}<br>
+            <span style="padding-left:20px"> Tracking Number: ${trackingLink(label.tracking)}</span><br>
+            <span style="padding-left:20px"> Shipping Method: ${label.service_name}</span><br>
 
-        // const trackingUrl = `https://tools.usps.com/go/TrackConfirmAction?qtc_tLabels1=${tracking}`
-        // const trackingLink = `<a href="${trackingUrl}" target="_blank" rel="noopener noreferrer">${tracking}</a>`
+            <br>
+            TRACKING STATUS:
+
+            ${label.uspsParsed && label.uspsParsed.event} at ${label.uspsParsed && label.uspsParsed.eventDate} <br>
+            ${label.uspsParsed && label.uspsParsed.isDelivered ? '<span style="color:green;font-size:xx-large">✅<strong>Delivered</strong></span>' : ``}
+
+            ${ productReturlUrl = label.uspsParsed && label.uspsParsed.returnForm || null}
+            ${returnableDiv({...label.uspsParsed})}            
+            </div>`
 
         // Retrieve
         let loggedOut = localStorage.getItem("cacheOrder") === null
@@ -140,13 +188,23 @@
             loginSuccess();
         }
 
+        function showReturn(cmd){
+            if(!productReturlUrl || cmd ==="hide"){
+                document.getElementById("returnInfo").style.display = "none";
+                document.getElementById("returnInfo").innerHTML = ''
+                return
+            }
+            document.getElementById("returnInfo").style.display = "block";
+            document.getElementById("returnInfo").innerHTML = '<h3>Product Return</h3>'
+            document.getElementById("returnInfo").innerHTML += `<br><div><button type="button"><a class="mybtn" href="${productReturlUrl}" target="_blank" rel="noopener noreferrer">Confirm Your Return</a></button></div>`
+            // document.getElementById("returnInfo").innerHTML += `<div>Step 2: Return Tracking  <input type="text" id="inputReturnTracking" name="returnTracking" placeholder="tracking"></div>`
+            document.getElementById("returnInfo").innerHTML += `<br><div><button onclick="showReturn('hide')" type="button">Cancel Return</button></div>`
+
+        }
+
         function loadingPage() {
             document.getElementById("loader").style.display = "block";
             document.getElementById("myDiv").style.display = "none";
-        }
-
-        function deliveryStatus() {
-            document.getElementById("delivery").innerHTML = '(feature not implemented)'
         }
 
         function loginSuccess(inputOrder, inputEmail, inputPostal) {
@@ -169,13 +227,13 @@
 
         function renderLabels(json) {
             const e = document.getElementById("content")
-            e.innerHTML = `Order Status: ${json.status}`
+            e.innerHTML = `<br><hr>`
+            e.innerHTML += `ORDER PLACED ${json.date_created} <br> `
+            e.innerHTML += `<span style="padding-left:20px"> Order Status: ${json.status}</span><br>`
+            e.innerHTML += `<hr>`
             json.labels.forEach(element => {
                 e.innerHTML += renderLabel(element)
             });
-            // e.innerHTML += 
-            //     `<br><button onclick="deliveryStatus()" type="button">Delivery Status</button>`;
-
         }
 
         function clearSession() {
