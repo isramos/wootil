@@ -118,7 +118,7 @@ async function getOrder( inputEmail, inputOrderNumber, inputPostalCode){
     try{
         try{
              //TODO: make fs operations async
-            const json = JSON.parse( fs.readFileSync(`./${cacheFileName}`, 'utf-8') )
+            const json = JSON.parse( fs.readFileSync(`./cache/${cacheFileName}`, 'utf-8') )
             getOrderResponse = json.data
             const timestamp = json.timestamp
             const cacheAge = (Date.now() - timestamp) /1000
@@ -144,7 +144,7 @@ async function getOrder( inputEmail, inputOrderNumber, inputPostalCode){
     
         if(email === inputEmail && inputPostalCode === postcode){
             //TODO: make fs operations async
-            fs.writeFileSync(`./${cacheFileName}`, JSON.stringify({data:getOrderResponse, timestamp:Date.now()}, null,2), 'utf-8')
+            fs.writeFileSync(`./cache/${cacheFileName}`, JSON.stringify({data:getOrderResponse, timestamp:Date.now()}, null,2), 'utf-8')
         } else {
             return { status: 404}
         }
@@ -170,7 +170,7 @@ async function addNote( inputOrderNumber, noteText){
     console.log('Add note Result:', json)
 
     const cacheFileName = `_tmp_notes-${inputOrderNumber}.json`
-    fs.writeFileSync(`./${cacheFileName}.json`, JSON.stringify(json, null,2), 'utf-8')
+    fs.writeFileSync(`./cache/${cacheFileName}.json`, JSON.stringify(json, null,2), 'utf-8')
 
 }
 
@@ -184,7 +184,7 @@ async function getNote( inputOrderNumber, noteText){
     console.log('Order Notes:', json)
 
     const cacheFileName = `_tmp_notes-${inputOrderNumber}.json`
-    fs.writeFileSync(`./${cacheFileName}.json`, JSON.stringify(json, null,2), 'utf-8')
+    fs.writeFileSync(`./cache/${cacheFileName}.json`, JSON.stringify(json, null,2), 'utf-8')
 
 }
 
