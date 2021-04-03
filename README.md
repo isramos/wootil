@@ -7,11 +7,17 @@ Webapp running a few utilities for my Wordpress Woocommerce  store
 ## Feature 1: What's my tracking number
 Customers can retrieve their USPS tracking number using their Order #, email (billing) and Postal code (billing).
 
+## Feature 2: Can I return the item?
+DONE: Implement request for product returns, where the return policy is enforced. e.g. User can return product within 30 days of receiving product. Use USPS delivery status as the start time counter.
+
 
 ## Roadmap
-1. Implement request for product returns, where the return policy is enforced. e.g. User can return product within 30 days of receiving product. Use USPS delivery status as the start time counter.
+1. Guide customer through product return. Allow them to enter the tracking number for the returned product.
 2. Email the tracking number to the customer OR add to the order notes (require API with Write access).
+
 ## How to use this app
+
+``` TODO```
 
 ### Local development:
 1. Enable the Woocommerce REST API [here](https://docs.woocommerce.com/document/woocommerce-rest-api/). [API docs](https://woocommerce.github.io/woocommerce-rest-api-docs)
