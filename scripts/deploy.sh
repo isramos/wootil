@@ -35,4 +35,6 @@ scp -r ../app/public/* $USR_HST:$APP_DIR_PUBLIC
 printf "\nRestarting Server (Passanger Phusion)\n"
 ssh $USR_HST "touch $APP_DIR/tmp/restart.txt"
 
+ssh $USR_HST "mkdir $APP_DIR/cache"
+
 printf "\nThe App has been updated.\n"
