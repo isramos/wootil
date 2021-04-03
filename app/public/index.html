@@ -283,7 +283,7 @@
                 loginSuccess(inputOrder, inputEmail, inputPostal);
                 renderLabels(y);
             } catch (err) {
-                console.log('Error Fetching ${}. Details: ', err)
+                console.log(`Error Fetching ${apiEndpoint}. Details: `, err)
                 document.getElementById("content").innerHTML = showWarning(serverErrStr);
             }
             showPage()
