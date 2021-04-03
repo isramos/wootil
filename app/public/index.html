@@ -175,7 +175,7 @@
             ${label.uspsParsed && label.uspsParsed.event} at ${label.uspsParsed && label.uspsParsed.eventDate} <br>
             ${label.uspsParsed && label.uspsParsed.isDelivered ? '<span style="color:green;font-size:xx-large">✅<strong>Delivered</strong></span>' : ``}
 
-            ${ productReturlUrl = label.uspsParsed && label.uspsParsed.returnForm || null}
+            <!-- ${ productReturlUrl = label.uspsParsed && label.uspsParsed.returnForm || null} -->
             ${returnableDiv({...label.uspsParsed})}            
             </div>`
 
@@ -197,7 +197,6 @@
             document.getElementById("returnInfo").style.display = "block";
             document.getElementById("returnInfo").innerHTML = '<h3>Product Return</h3>'
             document.getElementById("returnInfo").innerHTML += `<br><div><button type="button"><a class="mybtn" href="${productReturlUrl}" target="_blank" rel="noopener noreferrer">Confirm Your Return</a></button></div>`
-            // document.getElementById("returnInfo").innerHTML += `<div>Step 2: Return Tracking  <input type="text" id="inputReturnTracking" name="returnTracking" placeholder="tracking"></div>`
             document.getElementById("returnInfo").innerHTML += `<br><div><button onclick="showReturn('hide')" type="button">Cancel Return</button></div>`
 
         }
@@ -277,14 +276,13 @@
             }
 
             const apiEndpoint = `/api/order/${inputOrder}/${inputEmail}/${inputPostal}`
-            console.log('Fetching API endpoint: ', apiEndpoint)
             try {
                 let x = await fetch(apiEndpoint);
                 let y = await x.json();
                 loginSuccess(inputOrder, inputEmail, inputPostal);
                 renderLabels(y);
             } catch (err) {
-                console.log(err)
+                console.log('Error Fetching ${}. Details: ', err)
                 document.getElementById("content").innerHTML = showWarning(serverErrStr);
             }
             showPage()
