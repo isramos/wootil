@@ -5,14 +5,14 @@ const dotenv = require('dotenv');
 let DEBUG = false;
 let CACHE_AGE = 5 * 60  // 5 min cache
 
-const { WORDPRESS_API_BASE, CONSUMER_KEY, CONSUMER_SECRET, USPS_USERNAME, DEV_MODE, RETURN_WINDOW = 0, RETURN_LINK} = process.env;
-
-if(WORDPRESS_API_BASE){
+if(process.env.WORDPRESS_API_BASE){
     console.log('Development mode. Loaded Env Var from  \'.env.dev\' file' )
 } else {
     console.log('Production mode. Loading Env Var from  \'.env\' file' )
     dotenv.config(); // load .env file
 }
+
+const { WORDPRESS_API_BASE, CONSUMER_KEY, CONSUMER_SECRET, USPS_USERNAME, DEV_MODE, RETURN_WINDOW = 0, RETURN_LINK} = process.env;
 
 if(WORDPRESS_API_BASE === undefined || CONSUMER_KEY === undefined || CONSUMER_SECRET  === undefined){
     console.log('Error: required environmental variables are not properly configured. Check \'.env\'.' )
