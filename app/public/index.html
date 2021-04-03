@@ -148,7 +148,8 @@
            return  `<a href="${trackingUrl(tracking)}" target="_blank" rel="noopener noreferrer">${tracking}</a>`
         }
 
-        const returnableDiv = ({openRetunWindow, isReturnable, returnByDate }) => {
+        const returnableDiv = ({isDelivered, openRetunWindow, isReturnable, returnByDate }) => {
+            if(!isDelivered) return ``;
             if(isReturnable && openRetunWindow){
                 return `
                 <div><button onclick="showReturn()" type="button">Return item</button></div> 
