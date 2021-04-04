@@ -1,5 +1,6 @@
 const fetch = require('node-fetch')
 const fs = require('fs')
+const bodyParser = require('body-parser')
 const dotenv = require('dotenv');
 
 let DEBUG = false;
@@ -35,7 +36,9 @@ const port = 3000
 
 // Serve static files
 app.use(express.static('public'))
-  
+
+// Parse application/json
+app.use(bodyParser.json())
 app.get('/api', (req, res) => {
   res.send('Wootils API is up and running!')
 })
@@ -76,6 +79,12 @@ app.get('/api/order/:inputOrderNumber/:inputEmail/:inputPostalCode', async (req,
         orderResponse.labels = labelsArray
     }
     res.status(200).json({...orderResponse, params:req.params })
+})
+
+app.post('/api/returns', async (req, res) => {
+    console.log('POST /api/returns - body: ', req.body)
+    const { orderid, tracking, comments } = req.body
+    return res.status(200).json({status: 'not implemented', data: { orderid, tracking, comments }})
 })
 
 app.listen(port, () => {
